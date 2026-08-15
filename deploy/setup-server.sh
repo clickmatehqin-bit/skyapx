@@ -73,10 +73,22 @@ install_mysql() {
   systemctl start mysql
 
   log "Securing MySQL..."
-  mysql -u root <<-EOSQL
+
+  # Try connecting without password first (fresh install)
+  if mysql -u root -e "SELECT 1" &>/dev/null; then
+    mysql -u root <<-EOSQL
 ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$MYSQL_ROOT_PASS';
 FLUSH PRIVILEGES;
 EOSQL
+  # Try connecting with temppass123 (after manual reset)
+  elif mysql -u root -ptemppass123 -e "SELECT 1" &>/dev/null; then
+    mysql -u root -ptemppass123 <<-EOSQL
+ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$MYSQL_ROOT_PASS';
+FLUSH PRIVILEGES;
+EOSQL
+  else
+    fail "Cannot connect to MySQL as root. Please reset MySQL root password manually."
+  fi
 
   log "Creating database '$DB_NAME'..."
   mysql -u root -p"$MYSQL_ROOT_PASS" <<-EOSQL
