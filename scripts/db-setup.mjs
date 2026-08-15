@@ -43,7 +43,15 @@ const connection = await mysql.createConnection({
 
 async function applySqlFile(file, label) {
   const sql = await readFile(file, "utf8");
-  await connection.query(sql);
+  try {
+    await connection.query(sql);
+  } catch (err) {
+    if (err.code === "ER_DUP_KEYNAME" || err.code === "ER_DUP_ENTRY") {
+      console.log(`⚠ ${label} — some objects already exist, skipping duplicates`);
+    } else {
+      throw err;
+    }
+  }
   console.log(`✓ ${label}`);
 }
 
