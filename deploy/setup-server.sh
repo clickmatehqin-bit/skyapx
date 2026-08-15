@@ -74,7 +74,7 @@ install_mysql() {
 
   log "Securing MySQL..."
   mysql -u root <<-EOSQL
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$MYSQL_ROOT_PASS';
+ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$MYSQL_ROOT_PASS';
 FLUSH PRIVILEGES;
 EOSQL
 
