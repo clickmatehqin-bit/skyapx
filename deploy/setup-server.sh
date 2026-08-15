@@ -74,20 +74,32 @@ install_mysql() {
 
   log "Securing MySQL..."
 
+  # Read existing password from .env if it exists
+  EXISTING_PASS=""
+  if [[ -f /opt/skyapx/.env ]]; then
+    EXISTING_PASS=$(grep DATABASE_URL /opt/skyapx/.env 2>/dev/null | sed 's/.*:\([^@]*\)@.*/\1/' || true)
+  fi
+
   # Try connecting without password first (fresh install)
   if mysql -u root -e "SELECT 1" &>/dev/null; then
     mysql -u root <<-EOSQL
 ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$MYSQL_ROOT_PASS';
 FLUSH PRIVILEGES;
 EOSQL
-  # Try connecting with temppass123 (after manual reset)
+  # Try with temppass123 (after manual reset)
   elif mysql -u root -ptemppass123 -e "SELECT 1" &>/dev/null; then
     mysql -u root -ptemppass123 <<-EOSQL
 ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$MYSQL_ROOT_PASS';
 FLUSH PRIVILEGES;
 EOSQL
+  # Try with existing password from .env
+  elif [[ -n "$EXISTING_PASS" ]] && mysql -u root -p"$EXISTING_PASS" -e "SELECT 1" &>/dev/null; then
+    mysql -u root -p"$EXISTING_PASS" <<-EOSQL
+ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$MYSQL_ROOT_PASS';
+FLUSH PRIVILEGES;
+EOSQL
   else
-    fail "Cannot connect to MySQL as root. Please reset MySQL root password manually."
+    fail "Cannot connect to MySQL as root. Reset with: sudo mysqld_safe --skip-grant-tables"
   fi
 
   log "Creating database '$DB_NAME'..."
