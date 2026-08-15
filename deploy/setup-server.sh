@@ -146,7 +146,7 @@ build_app() {
   sudo -u "$DEPLOY_USER" bash -c '
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-    npm ci --omit=dev
+    npm install --omit=dev
     npm run db:setup
     npm run build
   '

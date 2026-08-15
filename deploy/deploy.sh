@@ -29,7 +29,7 @@ git reset --hard origin/main
 
 # --- 2. Install deps ---
 log "Installing production dependencies…"
-npm ci --omit=dev
+npm install --omit=dev
 
 # --- 3. DB migrations ---
 log "Applying database migrations…"

@@ -44,7 +44,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
-      - run: npm ci
+      - run: npm install
 
       - run: npm run build
 
@@ -94,7 +94,7 @@ jobs:
             git reset --hard origin/main
 
             echo "--- Installing production deps ---"
-            npm ci --omit=dev
+            npm install --omit=dev
 
             echo "--- Applying DB migrations ---"
             npm run db:setup || echo "db:setup skipped"
