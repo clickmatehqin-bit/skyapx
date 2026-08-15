@@ -1,0 +1,50 @@
+# ============================================================================
+# Caddy reverse proxy for Sky APX
+#
+# Caddy = HTTPS auto-provisioned, no certbot needed.
+# Just point DNS and it works.
+#
+# Place at: /etc/caddy/Caddyfile
+# Restart:  sudo systemctl restart caddy
+# ============================================================================
+
+DOMAIN_NAME {
+    # --- Reverse proxy to Node.js ---
+    reverse_proxy 127.0.0.1:3000 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # WebSocket support (for HMR in dev, or future use)
+        # flush_interval -1
+    }
+
+    # --- Static assets caching ---
+    header /assets/* Cache-Control "public, max-age=31536000, immutable"
+    header /assets/* Access-Control-Allow-Origin "*"
+
+    # --- Security headers ---
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # --- Gzip ---
+    encode gzip zstd
+
+    # --- Logging ---
+    log {
+        output file /var/log/caddy/skyapx.log
+        format json
+    }
+
+    # --- Timeouts ---
+    timeouts {
+        read_body 300s
+        read_header 10s
+        write 300s
+        idle 120s
+    }
+}

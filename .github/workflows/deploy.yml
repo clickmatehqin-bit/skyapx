@@ -1,0 +1,111 @@
+# ============================================================================
+# Sky APX — CI/CD Pipeline
+#
+# Triggers:
+#   - Push to main -> build + deploy to EC2
+#   - Pull request  -> build only (verify it compiles)
+#
+# Required GitHub Secrets:
+#   EC2_HOST        — public IP of the EC2 instance
+#   EC2_USER        — SSH user (default: deploy)
+#   EC2_SSH_KEY     — private SSH key (PEM format)
+#
+# How to set secrets:
+#   Go to repo -> Settings -> Secrets and variables -> Actions -> New repository secret
+# ============================================================================
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  # ------------------------------------------------------------------
+  # Job 1: Build (runs on every push/PR)
+  # ------------------------------------------------------------------
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            .output/
+            package.json
+            package-lock.json
+            db/
+            scripts/
+            deploy/
+          retention-days: 3
+
+  # ------------------------------------------------------------------
+  # Job 2: Deploy to EC2 (only on push to main, after build)
+  # ------------------------------------------------------------------
+  deploy:
+    name: Deploy to EC2
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: deploy-staging/
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'deploy' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd /opt/skyapx/app
+
+            echo "--- Pulling latest code ---"
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "--- Installing production deps ---"
+            npm ci --omit=dev
+
+            echo "--- Applying DB migrations ---"
+            npm run db:setup || echo "db:setup skipped"
+
+            echo "--- Building ---"
+            npm run build
+
+            echo "--- Restarting service ---"
+            sudo systemctl restart skyapx
+            sudo systemctl is-active skyapx
+
+            echo "--- Health check ---"
+            sleep 3
+            curl -sf http://127.0.0.1:3000/ > /dev/null && echo "Deploy successful" || { echo "Health check failed"; exit 1; }

@@ -1,0 +1,28 @@
+[Unit]
+Description=Sky APX Medical Coding Academy
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/skyapx/app
+
+EnvironmentFile=/opt/skyapx/.env
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=3000
+
+ExecStart=/usr/bin/node .output/server/index.mjs
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=skyapx
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/skyapx
+
+[Install]
+WantedBy=multi-user.target
