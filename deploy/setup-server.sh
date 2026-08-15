@@ -131,7 +131,7 @@ write_env() {
   cat > /opt/skyapx/.env <<ENVEOF
 DATABASE_URL=mysql://root:${MYSQL_ROOT_PASS}@localhost:3306/${DB_NAME}
 ADMIN_EMAIL=admin@skyapx.com
-ADMIN_NAME=Sky APX Admin
+ADMIN_NAME="Sky APX Admin"
 ADMIN_PASSWORD=admin123
 HOST=0.0.0.0
 PORT=3000
